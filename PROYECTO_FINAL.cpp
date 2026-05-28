@@ -7,6 +7,7 @@
 #include <cstring>
 #include <iomanip> // <-- Añadido para setw, left, etc.
 #include <math.h>
+#include "ConexionBD.h" // Asegúrate de que este archivo esté en el mismo directorio o ajusta la ruta
 
 using namespace std;
 
@@ -142,6 +143,15 @@ bool validarPesoEdad(float peso, int anios, string& mensajeError) {
 int main() {
     int opcion = 0;
     double imc;
+    ConexionBD cn = ConexionBD();
+    cn.abrir_conexion();
+    if (cn.get_conexion()) {
+        cout << "Conexion a base de datos exitosa.\n";
+        // Aquí podrías agregar código para interactuar con la base de datos
+    }
+    else {
+        cout << "Error al conectar a la base de datos.\n";
+    }
 
     cout << "\n-----------------------------------------------------------------------------------" << endl;
     cout << "  \t\t   SISTEMA DE GESTION NUTRICIONAL          \n";
