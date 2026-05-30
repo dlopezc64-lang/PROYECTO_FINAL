@@ -1,3 +1,6 @@
+// ======================================================================
+// MODULO 1: LIBRERIAS Y DEPENDENCIAS
+// ======================================================================
 #include <iostream>
 #include <string>
 #include <vector>
@@ -5,43 +8,33 @@
 #include <sstream>
 #include <ctime>
 #include <cstring>
-#include <iomanip> // <-- Añadido para setw, left, etc.
-#include <math.h>
-#include "ConexionBD.h" // Asegúrate de que este archivo esté en el mismo directorio o ajusta la ruta
+#include <iomanip>
+#include <cmath>
+#include <fstream>
+#include <clocale>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+#include "ConexionBD.h" // Asegurate de que este archivo este en el mismo directorio
 
 using namespace std;
 
-//Utilidad: Trimming
-string trim(const string& s)
-{
-    size_t inicio = s.find_first_not_of(" \t\r\n");
-    if (inicio == string::npos) return "";
-    size_t fin = s.find_last_not_of(" \t\r\n");
-    return s.substr(inicio, fin - inicio + 1);
-}
+// ======================================================================
+// MODULO 2: CONSTANTES Y MACROS - COLORES ANSI
+// ======================================================================
+constexpr const char* RESET = "\033[0m";
+constexpr const char* ROJO = "\033[31m";
+constexpr const char* VERDE = "\033[32m";
+constexpr const char* AMARILLO = "\033[33m";
+constexpr const char* AZUL = "\033[34m";
+constexpr const char* CYAN = "\033[36m";
+constexpr const char* BOLD = "\033[1m";
 
-string aMinusculas(const string& s)
-{
-
-    string r = s;
-    transform(r.begin(), r.end(), r.begin(), ::tolower);
-    return r;
-}
-
-//Estructura de datos
-struct Usuario
-{
-    string nombreCompleto;
-    struct tm fechaNacimiento = {};
-    string genero;
-    string direccion;
-    float peso = 0.0f;
-    float altura = 0.0f;
-    string nivelActividad;
-    string ocupacion;
-};
-
-// estructura para alimentos consumidos
+// ======================================================================
+// MODULO 3: ESTRUCTURAS DE DATOS
+// ======================================================================
 struct Alimento {
     string nombre;
     int kcal;
@@ -50,440 +43,747 @@ struct Alimento {
     double grasa;
 };
 
-void obeso();
-void sobrepeso();
-void normal();
-void bajo();  // para imprimir los mensajes de los diferentes pesos que tenga segun el imc
-void calorias(float& peso, float& altura, int& tA, string& genero, string& nombreCompleto);
-void menu(int& opcion);
-void comprobacion();
-bool validarDireccion(const string& dir, string& mensajeError);
-void calcularEdad(struct tm nac, int& dias, int& meses, int& anios);
-bool validarPesoEdad(float peso, int anios, string& mensajeError);
+struct Usuario {
+    string id;
+    string nombreCompleto;
+    int edad = 0;
+    string genero;
+    string direccion;
+    float peso = 0.0f;
+    float altura = 0.0f;
+    string nivelActividad;
+    string ocupacion;
+    double imc = 0.0;
 
-// Portable, safe localtime wrapper: uses localtime_s on MSVC, localtime_r on POSIX, falls back to localtime otherwise
-bool localtime_safe(const time_t* t, struct tm* out) {
-#ifdef _MSC_VER
-    return localtime_s(out, t) == 0;
-#elif defined(__unix__) || defined(__APPLE__)
-    return localtime_r(t, out) != nullptr;
+    int desayunoIdx = -1;
+    int almuerzoIdx = -1;
+    int cenaIdx = -1;
+
+    bool yaTieneCaloriasCalculadas = false;
+    double caloriasRecomendadas = 0.0;
+    double tmbCalculada = 0.0;
+    int nivelActividadSeleccionado = 0;
+    int metaSeleccionada = 0; // 1: Bajar, 2: Mantener, 3: Aumentar
+};
+
+// ======================================================================
+// MODULO 4: DATOS GLOBALES CONSTANTES
+// ======================================================================
+const vector<Alimento> listaAlimentos = {
+    {"Hamburguesa con queso", 303, 15.0, 30.0, 14.0},
+    {"Piza de pepperoni", 290, 12.0, 32.0, 12.0},
+    {"Papas fritas", 365, 4.0, 48.0, 17.0},
+    {"Nuggets de pollo", 270, 13.0, 16.0, 16.0},
+    {"Hot Dog sencillo", 290, 10.0, 24.0, 16.0},
+    {"Refresco de cola", 150, 0.0, 39.0, 0.0},
+    {"Cerveza clara", 153, 1.6, 13.0, 0.0},
+    {"Jugo naranja nat", 110, 2.0, 26.0, 0.2},
+    {"Cafe Latte", 120, 6.0, 12.0, 6.0},
+    {"Bebida energetica", 110, 0.0, 28.0, 0.0},
+    {"Pechuga de pollo", 165, 31.0, 0.0, 3.6},
+    {"Carne asar (res)", 250, 26.0, 0.0, 15.0},
+    {"Filete de salmon", 208, 20.0, 0.0, 13.0},
+    {"Arroz blanco", 130, 2.4, 28.0, 0.3},
+    {"Frijoles negros", 132, 9.0, 23.0, 0.5},
+    {"Pasta cocida", 158, 5.8, 31.0, 0.9},
+    {"Ensalada Cesar", 350, 18.0, 15.0, 24.0},
+    {"Sushi Filadelfia", 320, 8.0, 52.0, 8.0}
+};
+
+// ======================================================================
+// MODULO 5: PROTOTIPOS DE FUNCIONES
+// ======================================================================
+// 5.1 Utilidades de UI
+void limpiar();
+void pausa();
+void dibujarLinea(int ancho = 70, char c = '=');
+void dibujarTitulo(const string& titulo);
+
+// 5.2 Utilidades de strings y validacion
+string optimizarEspacios(const string& s);
+string aMinusculas(const string& s);
+bool validarDireccion(const string& dir, string& mensajeError);
+bool validarPesoEdad(float peso, int anios, string& mensajeError);
+void evaluacionPesoYMensaje(int edad, double imc);
+
+// 5.3 Menus principales
+void pantallaBienvenida();
+void mostrarMenuPrincipal(int& opcion);
+void subMenuUsuario(Usuario& u);
+void menuNutricion(int& opcion, const Usuario& u);
+
+// 5.4 Modulos funcionales de nutricion
+void registroDietaDiaria(Usuario& u);
+void estadoNutricional(Usuario& u);
+void historialYReporte(Usuario& u);
+
+// 5.5 Gestion de usuarios - NUEVAS FUNCIONES PARA DESPEJAR MAIN
+void registrarNuevoUsuario(vector<Usuario>& usuarios);
+void cargarPerfilExistente(vector<Usuario>& usuarios);
+void listarUsuariosRegistrados(const vector<Usuario>& usuarios);
+void editarEliminarPerfil(vector<Usuario>& usuarios);
+
+// ======================================================================
+// MODULO 6: FUNCION MAIN - AHORA DESPEJADO
+// ======================================================================
+int main() {
+    setlocale(LC_ALL, "es_ES.UTF-8");
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
+
+    vector<Usuario> usuariosRegistrados;
+    ConexionBD cn = ConexionBD();
+    cn.abrir_conexion();
+    if (cn.get_conexion()) {
+        cout << VERDE << "----------------------------------------------------------------------------------------------------------------------." << RESET << "\n";
+        cout << VERDE << "\t\t\t\t[OK] DB Connection" << RESET << "\n";
+        cout << VERDE << "----------------------------------------------------------------------------------------------------------------------." << RESET << "\n";
+    }
+    else {
+        cout << ROJO << "[ERROR] Error correcting the DB." << RESET << "\n";
+    }
+
+    pantallaBienvenida();
+
+    int opcionPrincipal = 0;
+    do {
+        mostrarMenuPrincipal(opcionPrincipal);
+
+        switch (opcionPrincipal) {
+        case 1:
+            registrarNuevoUsuario(usuariosRegistrados);
+            break;
+        case 2:
+            cargarPerfilExistente(usuariosRegistrados);
+            break;
+        case 3:
+            listarUsuariosRegistrados(usuariosRegistrados);
+            break;
+        case 4:
+            editarEliminarPerfil(usuariosRegistrados);
+            break;
+        case 5:
+            dibujarTitulo("SALIENDO DEL SISTEMA");
+            cout << "Gracias por usar el Sistema de Gestion Nutricional 2026\n";
+            break;
+        default:
+            cout << ROJO << "\nOpcion invalida.\n" << RESET; pausa(); break;
+        }
+    } while (opcionPrincipal != 5);
+
+    return 0;
+}
+
+// ======================================================================
+// MODULO 7: IMPLEMENTACION - UTILIDADES DE UI
+// ======================================================================
+void limpiar() {
+#ifdef _WIN32
+    system("cls");
 #else
-    struct tm* tmp = localtime(t);
-    if (tmp) { *out = *tmp; return true; }
-    memset(out, 0, sizeof(*out));
-    return false;
+    system("clear");
 #endif
 }
 
-bool validarDireccion(const string& dir, string& mensajeError) {
-    string d = aMinusculas(dir);
-    mensajeError = "";
+void pausa() {
+    cout << "\n" << CYAN << "Presione Enter para continuar..." << RESET;
+    cin.ignore(1000, '\n');
+    cin.get();
+}
 
-    // Correcion for: Se asegura compatibilidad C++11
-    bool tieneNumero = false;
-    for (size_t i = 0; i < dir.length(); ++i)
+void dibujarLinea(int ancho, char c) {
+    cout << CYAN << string(ancho, c) << RESET << endl;
+}
+
+void dibujarTitulo(const string& titulo) {
+    limpiar();
+    dibujarLinea();
+    int espacios = (70 - titulo.length()) / 2;
+    if (espacios < 0) espacios = 0;
+    cout << CYAN << BOLD << string(espacios, ' ') << titulo << RESET << endl;
+    dibujarLinea();
+}
+
+// ======================================================================
+// MODULO 8: IMPLEMENTACION - MENUS PRINCIPALES
+// ======================================================================
+void pantallaBienvenida() {
+    cout << CYAN << BOLD;
+    cout << R"(
+    ╔═══════════════════════════════════════════════════════════════════╗
+    ║                                                                   ║
+    ║                SISTEMA DE GESTION NUTRICIONAL 2026                ║
+    ║                                                                   ║
+    ║                Tu salud comienza con lo que comes                 ║
+    ║                                                                   ║
+    ╚═══════════════════════════════════════════════════════════════════╝
+    )" << RESET << endl;
+    pausa();
+}
+
+void mostrarMenuPrincipal(int& opcion) {
+    dibujarTitulo("MENU PRINCIPAL");
+    cout << " " << BOLD << "1." << RESET << " Registro de Nuevo Usuario\n";
+    cout << " " << BOLD << "2." << RESET << " Cargar Perfil Existente\n";
+    cout << " " << BOLD << "3." << RESET << " Listado de Usuarios Registrados\n";
+    cout << " " << BOLD << "4." << RESET << " Eliminar / Editar Perfil\n";
+    cout << " " << BOLD << "5." << RESET << " Salir del Sistema\n";
+    dibujarLinea(70, '-');
+    cout << " Seleccione una opcion: ";
+    if (!(cin >> opcion)) { cin.clear(); cin.ignore(1000, '\n'); opcion = 0; }
+}
+
+void subMenuUsuario(Usuario& u) {
+    int opcion = 0;
+    do {
+        menuNutricion(opcion, u);
+        switch (opcion) {
+        case 1: registroDietaDiaria(u); break;
+        case 2: estadoNutricional(u); break;
+        case 3: historialYReporte(u); break;
+        case 4: cout << AMARILLO << "Cerrando sesion..." << RESET << endl; pausa(); break;
+        default: cout << ROJO << "Opcion no valida." << RESET << endl; pausa(); break;
+        }
+    } while (opcion != 4);
+}
+
+void menuNutricion(int& opcion, const Usuario& u) {
+    dibujarTitulo("CONSULTAS DE MI ALIMENTACION");
+    cout << " Usuario activo: " << BOLD << CYAN << u.nombreCompleto << RESET << " | IMC: " << fixed << setprecision(2) << u.imc << "\n";
+    dibujarLinea(70, '-');
+    cout << " " << BOLD << "1." << RESET << " Registro de Dieta Diaria\n";
+    cout << " " << BOLD << "2." << RESET << " Estado Nutricional y Requerimiento\n";
+    cout << " " << BOLD << "3." << RESET << " Historial y Reporte TXT\n";
+    cout << " " << BOLD << "4." << RESET << " Regresar al Menu Principal\n";
+    dibujarLinea(70, '-');
+    cout << " Seleccione una opcion: ";
+    if (!(cin >> opcion)) { cin.clear(); cin.ignore(1000, '\n'); opcion = 0; }
+}
+
+// ======================================================================
+// MODULO 9: IMPLEMENTACION - GESTION DE USUARIOS
+// ======================================================================
+void registrarNuevoUsuario(vector<Usuario>& usuarios) {
+    Usuario nuevo;
+    string buf;
+    cin.ignore(1000, '\n');
+
+    dibujarTitulo("REGISTRO DE NUEVO USUARIO");
+    cout << "ID del Usuario: ";
+    getline(cin, buf);
+    nuevo.id = optimizarEspacios(buf);
+
+    cout << "Nombre completo: ";
+    getline(cin, buf);
+    nuevo.nombreCompleto = optimizarEspacios(buf);
+
+    cout << "Edad: ";
+    while (!(cin >> nuevo.edad) || nuevo.edad <= 0) {
+        cout << ROJO << "Edad invalida. Ingrese de nuevo: " << RESET;
+        cin.clear(); cin.ignore(1000, '\n');
+    }
+
+    cin.ignore(1000, '\n');
+    cout << "Genero (M/F): ";
+    getline(cin, buf);
+    nuevo.genero = optimizarEspacios(buf);
+
+    string errDir;
+
+    while (true) {
+        cout << "\nDireccion (Ej.): "
+            << AMARILLO
+            << "3-44, Zona 1, El Tejar, Chimaltenango"
+            << RESET << "\n";
+
+        cout << "Ingrese direccion: ";
+        getline(cin, buf);
+
+        nuevo.direccion = optimizarEspacios(buf);
+
+        if (validarDireccion(nuevo.direccion, errDir)) {
+            break;
+        }
+
+        cout << ROJO << "\n[ERROR EN DIRECCION]\n"
+            << errDir
+            << RESET << endl;
+    }
+
+    string errPeso;
+
+    while (true) {
+        cout << "Peso (kg): ";
+
+        if (!(cin >> nuevo.peso)) {
+            cout << ROJO << "Entrada invalida.\n" << RESET;
+            cin.clear();
+            cin.ignore(1000, '\n');
+            continue;
+        }
+
+        if (validarPesoEdad(nuevo.peso, nuevo.edad, errPeso)) {
+            break;
+        }
+
+        cout << AMARILLO
+            << "\n[ADVERTENCIA]"
+            << "\nEl peso ingresado no parece realista."
+            << "\n" << errPeso
+            << "\nIngrese nuevamente el dato.\n"
+            << RESET;
+    }
+
+    cout << "Altura (m): ";
+    while (!(cin >> nuevo.altura) || nuevo.altura <= 0) {
+        cout << ROJO << "Altura invalida. Ingrese de nuevo: " << RESET;
+        cin.clear(); cin.ignore(1000, '\n');
+    }
+    nuevo.imc = nuevo.peso / pow(nuevo.altura, 2);
+
+    cin.ignore(1000, '\n');
+    cout << "Nivel de actividad fisica (Sedentario/Ligero/Moderado/Activo): ";
+    getline(cin, buf);
+    nuevo.nivelActividad = optimizarEspacios(buf);
+
+    cout << "Trabajo u ocupacion: ";
+    getline(cin, buf);
+    nuevo.ocupacion = optimizarEspacios(buf);
+    limpiar();
+    dibujarLinea(90, '-');
+    cout << BOLD << "\t\t\tObjetivo Fisico:" << RESET << "\n";
+    dibujarLinea(90, '-');
+    cout << " 1. Bajar de peso\n 2. Mantener peso\n 3. Aumentar masa muscular\nOpcion: ";
+    while (!(cin >> nuevo.metaSeleccionada) || nuevo.metaSeleccionada < 1 || nuevo.metaSeleccionada > 3)
     {
-        if (isdigit(dir[i])) { tieneNumero = true; break; }
+        cout << ROJO << "Seleccion invalida (1-3): " << RESET;
+        cin.clear(); cin.ignore(1000, '\n');
     }
-    if (!tieneNumero) mensajeError += "  - Falta numero de casa (ej: 5-32)\n";
 
-    // Correcion Corchetes: Definicion de vectores
-    vector<string> sectores;
-    sectores.push_back("zona"); sectores.push_back("barrio");
-    sectores.push_back("colonia"); sectores.push_back("canton");
+    dibujarTitulo("REGISTRO COMPLETADO");
 
+    cout << BOLD << "\n===== INFORMACION DEL USUARIO =====\n" << RESET;
+
+    cout << "ID: " << CYAN << nuevo.id << RESET << endl;
+    cout << "Nombre: " << CYAN << nuevo.nombreCompleto << RESET << endl;
+    cout << "Edad: " << nuevo.edad << " anios\n";
+    cout << "Genero: " << nuevo.genero << endl;
+    cout << "Direccion: " << nuevo.direccion << endl;
+    cout << "Peso: " << nuevo.peso << " kg\n";
+    cout << "Altura: " << nuevo.altura << " m\n";
+    cout << "Actividad Fisica: " << nuevo.nivelActividad << endl;
+    cout << "Ocupacion: " << nuevo.ocupacion << endl;
+
+    cout << "\n===== RESULTADO NUTRICIONAL =====\n";
+
+    cout << "IMC Calculado: "
+        << BOLD
+        << fixed << setprecision(2)
+        << nuevo.imc
+        << RESET
+        << " -> ";
+
+    evaluacionPesoYMensaje(nuevo.edad, nuevo.imc);
+
+    cout << "\n";
+
+    if (nuevo.imc < 18.5) {
+        cout << AMARILLO
+            << "Recomendacion: Debes mejorar tu alimentacion y aumentar tu ingesta calorica."
+            << RESET << endl;
+    }
+    else if (nuevo.imc < 25) {
+        cout << VERDE
+            << "Excelente. Mantienes un peso saludable. Continua con buenos habitos alimenticios."
+            << RESET << endl;
+    }
+    else if (nuevo.imc < 30) {
+        cout << AMARILLO
+            << "Se recomienda moderar el consumo de grasas y azucares."
+            << RESET << endl;
+    }
+    else {
+        cout << ROJO
+            << "Es importante mejorar los habitos alimenticios y realizar actividad fisica."
+            << RESET << endl;
+    }
+
+    ////dibujarLinea();
+
+    usuarios.push_back(nuevo);
+    pausa();
+    subMenuUsuario(usuarios.back());
+}
+
+void cargarPerfilExistente(vector<Usuario>& usuarios) {
+    if (usuarios.empty()) {
+        cout << ROJO << "\nNo hay usuarios registrados aun.\n" << RESET;
+        pausa();
+        return;
+    }
+    string buscarId, buscarNombre;
+    cin.ignore(1000, '\n');
+    dibujarTitulo("CARGAR PERFIL EXISTENTE");
+    cout << "Ingrese ID: ";
+    getline(cin, buscarId);
+    cout << "Ingrese Nombre Completo: ";
+    getline(cin, buscarNombre);
+
+    buscarId = optimizarEspacios(buscarId);
+    buscarNombre = optimizarEspacios(buscarNombre);
+
+    bool encontrado = false;
+    for (auto& u : usuarios) {
+        if (aMinusculas(u.id) == aMinusculas(buscarId) &&
+            aMinusculas(u.nombreCompleto) == aMinusculas(buscarNombre)) {
+            cout << VERDE << "\n¡Perfil cargado! Bienvenido(a) " << BOLD << u.nombreCompleto << RESET << ".\n";
+            pausa();
+            subMenuUsuario(u);
+            encontrado = true;
+            break;
+        }
+    }
+    if (!encontrado) {
+        cout << ROJO << "\nUsuario no encontrado.\n" << RESET;
+        pausa();
+    }
+}
+
+void listarUsuariosRegistrados(const vector<Usuario>& usuarios) {
+    dibujarTitulo("LISTADO DE USUARIOS REGISTRADOS");
+    cout << BOLD << left << setw(12) << "ID" << setw(32) << "NOMBRE COMPLETO"
+        << setw(8) << "EDAD" << setw(10) << "PESO(kg)" << setw(10) << "IMC" << RESET << endl;
+    dibujarLinea(70, '-');
+    if (usuarios.empty()) cout << "No hay usuarios en el sistema.\n";
+    else {
+        for (const auto& u : usuarios) {
+            cout << setw(12) << left << u.id << setw(32) << u.nombreCompleto.substr(0, 30)
+                << setw(8) << u.edad << setw(10) << u.peso << setw(10) << fixed << setprecision(2) << u.imc << endl;
+        }
+    }
+    dibujarLinea();
+    pausa();
+}
+
+void editarEliminarPerfil(vector<Usuario>& usuarios) {
+    if (usuarios.empty()) {
+        cout << ROJO << "\nNo hay usuarios para editar/eliminar.\n" << RESET;
+        pausa(); return;
+    }
+    string buscarId;
+    cin.ignore(1000, '\n');
+    dibujarTitulo("EDITAR / ELIMINAR PERFIL");
+    cout << "Ingrese ID del usuario: ";
+    getline(cin, buscarId);
+    buscarId = optimizarEspacios(buscarId);
+
+    for (auto it = usuarios.begin(); it != usuarios.end(); ++it) {
+        if (aMinusculas(it->id) == aMinusculas(buscarId)) {
+            cout << "Usuario: " << BOLD << it->nombreCompleto << RESET << endl;
+            cout << "1. Eliminar\n2. Editar peso\nOpcion: ";
+            int op;
+            if (!(cin >> op)) { cin.clear(); cin.ignore(1000, '\n'); op = 0; }
+
+            if (op == 1) {
+                usuarios.erase(it);
+                cout << VERDE << "Usuario eliminado.\n" << RESET;
+            }
+            else if (op == 2) {
+                cout << "Nuevo peso (kg): ";
+                cin >> it->peso;
+                it->imc = it->peso / pow(it->altura, 2);
+                cout << VERDE << "Peso actualizado. Nuevo IMC: " << it->imc << RESET << endl;
+            }
+            else {
+                cout << ROJO << "Opcion invalida.\n" << RESET;
+            }
+            pausa(); return;
+        }
+    }
+    cout << ROJO << "Usuario no encontrado.\n" << RESET;
+    pausa();
+}
+
+// ======================================================================
+// MODULO 10: IMPLEMENTACION - MODULO 1: REGISTRO DE DIETA
+// ======================================================================
+void registroDietaDiaria(Usuario& u) {
+    dibujarTitulo("1. REGISTRO DE DIETA DIARIA");
+
+    if (!u.yaTieneCaloriasCalculadas) {
+        cout << BOLD << "Primera vez: Configuremos tus calculos base\n" << RESET;
+        cout << "Nivel de actividad (1.Sedentario 2.Ligero 3.Moderado 4.Activo 5.Muy activo): ";
+        while (!(cin >> u.nivelActividadSeleccionado) || u.nivelActividadSeleccionado < 1 || u.nivelActividadSeleccionado > 5) {
+            cout << ROJO << "Opcion invalida: " << RESET; cin.clear(); cin.ignore(1000, '\n');
+        }
+
+        double alturaCm = u.altura * 100;
+        if (u.genero == "M" || u.genero == "m") u.tmbCalculada = 10 * u.peso + 6.25 * alturaCm - 5 * u.edad + 5;
+        else u.tmbCalculada = 10 * u.peso + 6.25 * alturaCm - 5 * u.edad - 161;
+
+        double factor = 1.2;
+        switch (u.nivelActividadSeleccionado) {
+        case 1: factor = 1.2; break; case 2: factor = 1.375; break; case 3: factor = 1.55; break;
+        case 4: factor = 1.725; break; case 5: factor = 1.9; break;
+        }
+
+        u.caloriasRecomendadas = u.tmbCalculada * factor;
+        if (u.metaSeleccionada == 1) u.caloriasRecomendadas -= 500;
+        else if (u.metaSeleccionada == 3) u.caloriasRecomendadas += 500;
+        u.yaTieneCaloriasCalculadas = true;
+        cout << VERDE << "[OK] Calorias calculadas: " << u.caloriasRecomendadas << " kcal\n" << RESET;
+    }
+
+    cout << "\n" << BOLD << "╔═════╦═══════════════════════╦════════╦═════════╦════════╦═══════╗\n";
+    cout << "║  #  ║ Alimento              ║ Kcal   ║ Prot(g) ║ Carb(g)║Gras(g)║\n";
+    cout << "╠═════╬═══════════════════════╬════════╬═════════╬════════╬═══════╣\n" << RESET;
+    for (size_t i = 0; i < listaAlimentos.size(); i++) {
+        cout << "║ " << setw(3) << left << i + 1 << " ║ " << setw(21) << listaAlimentos[i].nombre
+            << " ║ " << setw(6) << listaAlimentos[i].kcal << " ║ " << setw(7) << listaAlimentos[i].proteina
+            << " ║ " << setw(6) << listaAlimentos[i].carbohidratos << " ║ " << setw(5) << listaAlimentos[i].grasa << " ║\n";
+    }
+    cout << BOLD << "╚═════╩═══════════════════════╩════════╩═════════╩════════╩═══════╝\n" << RESET;
+
+    int seleccion;
+    cout << "\n" << BOLD << ">>> REGISTRO DE ALIMENTOS DEL DIA <<<\n" << RESET;
+
+    if (u.desayunoIdx == -1) {
+        cout << "Desayuno #: ";
+        while (!(cin >> seleccion) || seleccion < 1 || seleccion >(int)listaAlimentos.size()) {
+            cout << ROJO << "Numero invalido: " << RESET; cin.clear(); cin.ignore(1000, '\n');
+        }
+        u.desayunoIdx = seleccion - 1;
+        cout << VERDE << "[OK] Desayuno: " << listaAlimentos[u.desayunoIdx].nombre << RESET << "\n";
+    }
+    else { cout << VERDE << "[OK] Desayuno ya registrado: " << listaAlimentos[u.desayunoIdx].nombre << RESET << "\n"; }
+
+    if (u.almuerzoIdx == -1) {
+        cout << "Almuerzo #: ";
+        while (!(cin >> seleccion) || seleccion < 1 || seleccion >(int)listaAlimentos.size()) {
+            cout << ROJO << "Numero invalido: " << RESET; cin.clear(); cin.ignore(1000, '\n');
+        }
+        u.almuerzoIdx = seleccion - 1;
+        cout << VERDE << "[OK] Almuerzo: " << listaAlimentos[u.almuerzoIdx].nombre << RESET << "\n";
+    }
+    else { cout << VERDE << "[OK] Almuerzo ya registrado: " << listaAlimentos[u.almuerzoIdx].nombre << RESET << "\n"; }
+
+    if (u.cenaIdx == -1) {
+        cout << "Cena #: ";
+        while (!(cin >> seleccion) || seleccion < 1 || seleccion >(int)listaAlimentos.size()) {
+            cout << ROJO << "Numero invalido: " << RESET; cin.clear(); cin.ignore(1000, '\n');
+        }
+        u.cenaIdx = seleccion - 1;
+        cout << VERDE << "[OK] Cena: " << listaAlimentos[u.cenaIdx].nombre << RESET << "\n";
+    }
+    else { cout << VERDE << "[OK] Cena ya registrada: " << listaAlimentos[u.cenaIdx].nombre << RESET << "\n"; }
+
+    cout << VERDE << "\n¡Datos guardados exitosamente!\n" << RESET;
+    pausa();
+}
+
+// ======================================================================
+// MODULO 11: IMPLEMENTACION - MODULO 2: ESTADO NUTRICIONAL
+// ======================================================================
+void estadoNutricional(Usuario& u) {
+    dibujarTitulo("2. ESTADO NUTRICIONAL Y REQUERIMIENTOS");
+
+    if (!u.yaTieneCaloriasCalculadas) {
+        cout << ROJO << "Debe registrar su dieta (Opcion 1) antes de ver el estado.\n" << RESET;
+        pausa(); return;
+    }
+
+    cout << BOLD << "--- Datos Fisiologicos ---\n" << RESET;
+    cout << "IMC Actual: " << BOLD << fixed << setprecision(2) << u.imc << RESET << " -> ";
+    evaluacionPesoYMensaje(u.edad, u.imc);
+    cout << "\nMetabolismo Basal (TMB): " << u.tmbCalculada << " kcal\n";
+
+    cout << "\n" << BOLD << "--- Meta Calorica ---\n" << RESET;
+    cout << "Objetivo: ";
+    if (u.metaSeleccionada == 1) cout << AMARILLO << "Bajar de Peso" << RESET << "\n";
+    else if (u.metaSeleccionada == 2) cout << CYAN << "Mantener Peso" << RESET << "\n";
+    else cout << VERDE << "Aumentar Masa Muscular" << RESET << "\n";
+    cout << "Meta Diaria: " << BOLD << u.caloriasRecomendadas << " kcal" << RESET << "\n";
+
+    int total_kcal = 0;
+    double total_prot = 0, total_carb = 0, total_gras = 0;
+    int indices[3] = { u.desayunoIdx, u.almuerzoIdx, u.cenaIdx };
+
+    for (int i = 0; i < 3; i++) {
+        if (indices[i] != -1) {
+            total_kcal += listaAlimentos[indices[i]].kcal;
+            total_prot += listaAlimentos[indices[i]].proteina;
+            total_carb += listaAlimentos[indices[i]].carbohidratos;
+            total_gras += listaAlimentos[indices[i]].grasa;
+        }
+    }
+
+    cout << "\n" << BOLD << "--- Balance de Hoy ---\n" << RESET;
+    cout << "Consumidas: " << total_kcal << " kcal | Proteina: " << total_prot << "g\n";
+    double dif = u.caloriasRecomendadas - total_kcal;
+    if (dif > 0) cout << AMARILLO << "Te faltan " << dif << " kcal para tu meta.\n" << RESET;
+    else cout << ROJO << "Te excediste por " << abs(dif) << " kcal.\n" << RESET;
+
+    cout << "\n" << BOLD << "--- Analisis de Habitos ---\n" << RESET;
+    bool habitosSaludables = true;
+
+    if (u.desayunoIdx == -1 || u.almuerzoIdx == -1 || u.cenaIdx == -1) {
+        cout << AMARILLO << "[ALERTA] Estas omitiendo tiempos de comida.\n" << RESET;
+        habitosSaludables = false;
+    }
+
+    if (total_kcal > 0) {
+        double pctGrasa = (total_gras * 9.0 / total_kcal) * 100;
+        cout << "Grasas: " << fixed << setprecision(1) << pctGrasa << "% ";
+        if (pctGrasa > 30.0) {
+            cout << ROJO << "[ALTO] Recomendado < 30%\n" << RESET;
+            habitosSaludables = false;
+        }
+        else cout << VERDE << "[OK]\n" << RESET;
+    }
+
+    if (habitosSaludables && total_kcal > 0) {
+        cout << VERDE << "\n[EXCELENTE] Buenos habitos detectados.\n" << RESET;
+    }
+
+    pausa();
+}
+
+// ======================================================================
+// MODULO 12: IMPLEMENTACION - MODULO 3: HISTORIAL Y REPORTE
+// ======================================================================
+void historialYReporte(Usuario& u) {
+    dibujarTitulo("3. HISTORIAL Y GENERACION DE REPORTE");
+
+    if (!u.yaTieneCaloriasCalculadas) {
+        cout << ROJO << "No hay datos para generar el reporte.\n" << RESET;
+        pausa(); return;
+    }
+
+    string nombreArchivo = "ReporteNutricional_" + u.id + ".txt";
+    ofstream archivoFisico(nombreArchivo);
+    stringstream reporteStr;
+
+    reporteStr << "==================================================\n";
+    reporteStr << " REPORTE NUTRICIONAL - SISTEMA 2026\n";
+    reporteStr << "==================================================\n";
+    reporteStr << "Usuario: " << u.nombreCompleto << " (ID: " << u.id << ")\n";
+    reporteStr << "IMC: " << fixed << setprecision(2) << u.imc << " | Meta: " << u.caloriasRecomendadas << " kcal\n\n";
+
+    reporteStr << "--- CONSUMO HOY ---\n";
+    int indices[3] = { u.desayunoIdx, u.almuerzoIdx, u.cenaIdx };
+    string tiempos[3] = { "Desayuno", "Almuerzo", "Cena" };
+    int totalK = 0, omitidas = 0;
+
+    for (int i = 0; i < 3; i++) {
+        reporteStr << tiempos[i] << ": ";
+        if (indices[i] == -1) {
+            reporteStr << "No registrado\n";
+            omitidas++;
+        }
+        else {
+            Alimento al = listaAlimentos[indices[i]];
+            reporteStr << al.nombre << " (" << al.kcal << " kcal)\n";
+            totalK += al.kcal;
+        }
+    }
+
+    reporteStr << "\nTOTAL: " << totalK << " kcal\n";
+    reporteStr << "\n--- ANALISIS ---\n";
+    if (omitidas > 0) reporteStr << "[-] Omitiste " << omitidas << " tiempo(s).\n";
+    else reporteStr << "[+] 3 tiempos completos.\n";
+    reporteStr << "==================================================\n";
+
+    cout << reporteStr.str();
+
+    if (archivoFisico.is_open()) {
+        archivoFisico << reporteStr.str();
+        archivoFisico.close();
+        cout << VERDE << "\n[EXITO] Reporte generado: " << nombreArchivo << RESET << "\n";
+    }
+    else {
+        cout << ROJO << "\n[ERROR] No se pudo crear el archivo.\n" << RESET;
+    }
+
+    pausa();
+}
+
+// ======================================================================
+// MODULO 13: IMPLEMENTACION - FUNCIONES AUXILIARES
+// ======================================================================
+string optimizarEspacios(const string& s) {
+    string result; bool inSpace = false;
+    for (char c : s) {
+        if (isspace(c)) { if (!inSpace) { result += ' '; inSpace = true; } }
+        else { result += c; inSpace = false; }
+    }
+    size_t start = result.find_first_not_of(" ");
+    size_t end = result.find_last_not_of(" ");
+    return (start == string::npos) ? "" : result.substr(start, end - start + 1);
+}
+
+string aMinusculas(const string& s) {
+    string r = s; transform(r.begin(), r.end(), r.begin(), ::tolower); return r;
+}
+
+bool validarDireccion(const string& dir, string& mensajeError) {
+    mensajeError = "";
+    vector<string> partes; stringstream ss(dir); string item;
+    while (getline(ss, item, ',')) partes.push_back(optimizarEspacios(item));
+
+    if (partes.size() < 4) {
+        mensajeError = "Error: Debe tener 4 elementos separados por comas.\n";
+        return false;
+    }
+
+    string pCasa = aMinusculas(partes[0]); bool tieneNumero = false;
+    for (char c : pCasa) { if (isdigit(c)) { tieneNumero = true; break; } }
+    if (!tieneNumero) mensajeError += " -> Falta Numero de Casa.\n";
+
+    string pSector = aMinusculas(partes[1]);
+    vector<string> sectores = { "zona", "barrio", "colonia", "canton" };
     bool tieneSector = false;
-    for (size_t i = 0; i < sectores.size(); ++i) {
-        if (d.find(sectores[i]) != string::npos) { tieneSector = true; break; }
-    }
-    if (!tieneSector) mensajeError += "  - Falta referencia (zona/barrio/colonia/canton)\n";
+    for (const string& sec : sectores) if (pSector.find(sec) != string::npos) { tieneSector = true; break; }
+    if (!tieneSector) mensajeError += " -> Falta referencia de Sector.\n";
 
-    const char* munArray[] = { "chimaltenango", "san jose poaquil", "san martin jilotepeque", "comalapa", "santa apolonia", "tecpan", "patzun", "pochuta", "patzicia", "santa cruz balanya", "acatenango", "yepocapa", "san andres itzapa", "parramos", "zaragoza", "el tejar" };
-    bool tieneMunicipio = false;
-    for (int i = 0; i < 16; ++i) {
-        if (d.find(munArray[i]) != string::npos) { tieneMunicipio = true; break; }
-    }
-    if (!tieneMunicipio) mensajeError += "  - No es un municipio de Chimaltenango\n";
+    string pDepto = aMinusculas(partes[3]);
+    if (pDepto.find("chimaltenango") == string::npos) mensajeError += " -> Falta 'Chimaltenango'.\n";
 
     return mensajeError.empty();
 }
 
-void calcularEdad(struct tm nac, int& dias, int& meses, int& anios)
-{
-    time_t ahora = time(0);
-    struct tm hoy;
-
-    if (!localtime_safe(&ahora, &hoy)) {
-        // If obtaining local time failed, zero the struct to avoid undefined data
-        memset(&hoy, 0, sizeof(hoy));
-    }
-
-    anios = hoy.tm_year - nac.tm_year;
-    meses = hoy.tm_mon - nac.tm_mon;
-    dias = hoy.tm_mday - nac.tm_mday;
-
-    if (dias < 0) { meses--; dias += 30; }
-    if (meses < 0) { anios--; meses += 12; }
-}
-
 bool validarPesoEdad(float peso, int anios, string& mensajeError) {
-    float minKg, maxKg;
-    string rango;
+    float minKg, maxKg; string rango;
     if (anios < 1) { minKg = 3.0f; maxKg = 15.0f; rango = "infante"; }
-    else if (anios < 18) { minKg = 20.0f; maxKg = 100.0f; rango = "menor de edad"; }
+    else if (anios < 18) { minKg = 20.0f; maxKg = 100.0f; rango = "menor"; }
     else if (anios < 60) { minKg = 35.0f; maxKg = 250.0f; rango = "adulto"; }
     else { minKg = 30.0f; maxKg = 200.0f; rango = "adulto mayor"; }
 
     if (peso < minKg || peso > maxKg) {
-        mensajeError = "Peso poco realista para " + rango + " (" + to_string((int)minKg) + "-" + to_string((int)maxKg) + " kg)";
+        mensajeError = "Peso no realista para " + rango + ". Rango: " + to_string((int)minKg) + "-" + to_string((int)maxKg) + " kg";
         return false;
     }
     return true;
 }
-int main() {
-    int opcion = 0;
-    double imc;
-    ConexionBD cn = ConexionBD();
-    cn.abrir_conexion();
-    if (cn.get_conexion()) {
-        cout << "Conexion a base de datos exitosa.\n";
-        // Aquí podrías agregar código para interactuar con la base de datos
+
+void evaluacionPesoYMensaje(int edad, double imc) {
+    if (edad >= 65) {
+        if (imc >= 32.0) cout << ROJO << "Obesidad" << RESET;
+        else if (imc >= 28.0) cout << AMARILLO << "Sobrepeso" << RESET;
+        else if (imc >= 23.0) cout << VERDE << "Peso Saludable" << RESET;
+        else cout << ROJO << "Bajo peso" << RESET;
+    }
+    else if (edad >= 20) {
+        if (imc >= 30.0) cout << ROJO << "Obesidad" << RESET;
+        else if (imc >= 25.0) cout << AMARILLO << "Sobrepeso" << RESET;
+        else if (imc >= 18.5) cout << VERDE << "Peso Saludable" << RESET;
+        else cout << ROJO << "Bajo peso" << RESET;
     }
     else {
-        cout << "Error al conectar a la base de datos.\n";
+        if (imc >= 27.0) cout << ROJO << "Obesidad" << RESET;
+        else if (imc >= 22.0) cout << AMARILLO << "Sobrepeso" << RESET;
+        else if (imc >= 17.0) cout << VERDE << "Peso Saludable" << RESET;
+        else cout << ROJO << "Bajo peso" << RESET;
     }
-
-    cout << "\n-----------------------------------------------------------------------------------" << endl;
-    cout << "  \t\t   SISTEMA DE GESTION NUTRICIONAL          \n";
-    cout << "\t\t Tu salud comienza con lo que comes       \n";
-    cout << "===================================================================================\n";
-
-    Usuario nuevo;
-    string buf;
-    cin.ignore();
-
-    cout << "Nombre completo: ";
-    getline(cin, buf);
-    nuevo.nombreCompleto = trim(buf);
-
-    cout << "Fecha de nacimiento (DD MM AAAA): ";
-    int d, m, a;
-    cin >> d >> m >> a;
-    memset(&nuevo.fechaNacimiento, 0, sizeof(nuevo.fechaNacimiento));
-    nuevo.fechaNacimiento.tm_mday = d;
-    nuevo.fechaNacimiento.tm_mon = m - 1;
-    nuevo.fechaNacimiento.tm_year = a - 1900;
-
-    int tD, tM, tA;
-    calcularEdad(nuevo.fechaNacimiento, tD, tM, tA);
-    cout << "Edad: " << tA << " anos." << endl;
-
-    cin.ignore();
-    cout << "Genero (M/F): ";
-    getline(cin, buf);
-    nuevo.genero = trim(buf);
-
-    string errDir;
-    do {
-        cout << "Direccion (incluya zona, municipio y Chimaltenango): ";
-        getline(cin, buf);
-        nuevo.direccion = trim(buf);
-        if (!validarDireccion(nuevo.direccion, errDir)) cout << "Error:\n" << errDir;
-    } while (!errDir.empty());
-
-    string errPeso;
-    do {
-        cout << "Peso (kg): ";
-        if (!(cin >> nuevo.peso)) { cin.clear(); cin.ignore(1000, '\n'); }
-    } while (!validarPesoEdad(nuevo.peso, tA, errPeso) && (cout << errPeso << endl));
-
-    cout << "Altura (m): ";
-    cin >> nuevo.altura;
-    imc = nuevo.peso / pow(nuevo.altura, 2);
-    cin.ignore();
-    cout << "Actividad: ";
-    getline(cin, buf);
-    nuevo.nivelActividad = trim(buf);
-
-    cout << "Ocupacion: ";
-    getline(cin, buf);
-    nuevo.ocupacion = trim(buf);
-
-    cout << "\n--- REGISTRO EXITOSO ---" << endl;
-    cout << "Nombre: " << nuevo.nombreCompleto << endl;
-    cout << "Fecha de nacimiento: " << d << "/" << m << "/" << a << " (Edad: " << tA << " anos)" << endl;
-    cout << "Genero: " << nuevo.genero << endl;
-    cout << "Direccion: " << nuevo.direccion << endl;
-    cout << "Peso: " << nuevo.peso << " kg" << endl;
-    cout << "Altura: " << nuevo.altura << " m" << endl;
-    cout << "Nivel de actividad: " << nuevo.nivelActividad << endl;
-    cout << "Ocupacion: " << nuevo.ocupacion << endl;
-    cout << "Su Indice de Masa Corporal es: " << imc << endl;
-    cout << "\n\n ----------------------------------------------------------------------------------" << endl;
-
-    if (tA >= 65) {
-        cout << "Cuida tu salud y tu alimentacion" << endl;
-        if (imc >= 32) { cout << "Obesidad" << endl; obeso(); }
-        else if (imc >= 28) { cout << "Sobrepeso" << endl; sobrepeso(); }
-        else if (imc >= 23) { cout << "Peso Saludable" << endl; normal(); }
-        else { cout << "Delgadez" << endl; bajo(); }
-    }
-    else if (tA >= 20) {
-        cout << "Cuida tu salud y tu alimentacion" << endl;
-        if (imc >= 30) { cout << "Obesidad" << endl; obeso(); }
-        else if (imc >= 25) { cout << "Sobrepeso" << endl; sobrepeso(); }
-        else if (imc >= 18.5) { cout << "Peso Saludable" << endl; normal(); }
-        else { cout << "Bajo peso" << endl; bajo(); }
-    }
-    else {
-        if (imc >= 27) { cout << "Obesidad" << endl; obeso(); }
-        else if (imc >= 22) { cout << "Sobrepeso" << endl; sobrepeso(); }
-        else if (imc >= 17) { cout << "Peso Saludable" << endl; normal(); }
-        else { cout << "Bajo peso" << endl; bajo(); }
-    }
-    system("pause");
-    system("cls");
-
-    do {
-
-        menu(opcion);
-
-        switch (opcion)
-        {
-        case 1: calorias(nuevo.peso, nuevo.altura, tA, nuevo.genero, nuevo.nombreCompleto);
-            break;
-        case 2: comprobacion();
-            system("pause");
-            break;
-        case 3: cout << "Saliendo del sistema..." << endl;
-            break;
-        default: cout << "Opcion no valida." << endl; system("pause"); break;
-        }
-    } while (opcion != 3);
-    return 0;
-}
-void obeso() {
-    cout << "\033[31m" << "\n\n ¡Tu cuerpo te sostiene todos los días, y cuidarlo es un acto de amor propio, no un castigo. No se trata de buscar la perfección," << endl;
-    cout << "\033[31m" << "sino de ganar salud, energía y bienestar para disfrutar la vida al máximo.tu alimentacion y haz ejercicio!" << endl;
-    cout << "\033[0m";
-}
-void sobrepeso() {
-    cout << "\n\n El sobrepeso es simplemente una señal de alerta de tu cuerpo que te invita a hacer una pausa y ajustar el camino. No necesitas " << endl;
-    cout << " cambios drásticos ni dietas extremas; pequeños ajustes diarios en tu alimentación y un poco más de movimiento son suficientes para" << endl;
-    cout << "marcar una gran diferencia en cómo te sientes. ";
-}
-void normal() {
-    cout << "\n\n¡Felicidades! Mantenerte en un peso saludable es un gran logro y el reflejo directo del amor, tiempo y cuidado que le dedicas a " << endl;
-    cout << "tu cuerpo cada día.Estar en tu peso ideal significa que le estás dando a tu organismo el equilibrio que necesita para funcionar al" << endl;
-    cout << " máximo, proteger tus defensas y llenarte de energía para disfrutar la vida.";
-}
-void bajo() {
-    cout << "\n\n No se trata solo de comer más, sino de nutrirte mejor, con paciencia y de forma saludable. Cada paso que des para cuidar tu " << endl;
-    cout << " alimentación es una inversión en tu bienestar, tus defensas y tu vitalidad.¡Tu cuerpo merece estar fuerte y lleno de vida," << endl;
-    cout << "camina hacia esa meta con constancia!";
-}
-
-void calorias(float& peso, float& altura, int& tA, string& genero, string& nombreCompleto) {
-
-    double tmb, cal, factor;
-    int nivel;
-
-    cout << "=== Calculadora de Calorias Diarias segun la formula de la OMS ===\n";
-    cout << "\nNivel de actividad fisica:\n";
-    cout << " 1. Sedentario (poco o nada de ejercicio)\n";
-    cout << " 2. Ligero (1-3 dias/semana)\n";
-    cout << " 3. Moderado (3-5 dias/semana)\n";
-    cout << " 4. Activo (6-7 dias/semana)\n";
-    cout << " 5. Muy activo (ejercicio intenso diario)\n";
-    cout << "Opcion: ";
-    cin >> nivel;
-
-    // Formula Harris-Benedict revisada (Mifflin-St Jeor)
-    double alturaCm = altura * 100;
-    if (genero == "M" || genero == "m")
-
-        tmb = 10 * peso + 6.25 * alturaCm - 5 * tA + 5;
-    else
-        tmb = 10 * peso + 6.25 * altura - 5 * tA - 161;
-
-    switch (nivel) {
-    case 1: factor = 1.2;   break;
-    case 2: factor = 1.375; break;
-    case 3: factor = 1.55;  break;
-    case 4: factor = 1.725; break;
-    case 5: factor = 1.9;   break;
-    default:
-        cout << "Nivel invalido.\n";
-    }
-    cal = tmb * factor;
-
-    cout << "\n--- Resultado ---\n";
-    cout << "TMB (metabolismo basal): " << tmb << " kcal\n";
-    cout << "Calorias diarias recomendadas:" << cal << " kcal\n";
-    system("pause");
-    system("cls");
-
-    vector<Alimento> alimentos = {
-        // --- COMIDAS RÁPIDAS ---
-        {"Hamburguesa con queso", 303, 15.0, 30.0, 14.0},
-        {"Piza de pepperoni (1 porcion)", 290, 12.0, 32.0, 12.0},
-        {"Papas fritas (medianas)", 365, 4.0, 48.0, 17.0},
-        {"Nuggets de pollo (6 pzas)", 270, 13.0, 16.0, 16.0},
-        {"Hot Dog sencillo", 290, 10.0, 24.0, 16.0},
-
-        // --- BEBIDAS ---
-        {"Refresco de cola (355ml)", 150, 0.0, 39.0, 0.0},
-        {"Cerveza clara (355ml)", 153, 1.6, 13.0, 0.0},
-        {"Jugo de naranja natural", 110, 2.0, 26.0, 0.2},
-        {"Cafe Latte entero", 120, 6.0, 12.0, 6.0},
-        {"Bebida energetica (250ml)", 110, 0.0, 28.0, 0.0},
-
-        // --- COMIDAS COMPLETAS (Porciones estándar de consumo) ---
-        {"Pechuga de pollo asada", 165, 31.0, 0.0, 3.6},
-        {"Carne para asar (res)", 250, 26.0, 0.0, 15.0},
-        {"Filete de salmon", 208, 20.0, 0.0, 13.0},
-        {"Arroz blanco cocido", 130, 2.4, 28.0, 0.3},
-        {"Frijoles negros cocidos", 132, 9.0, 23.0, 0.5},
-        {"Pasta cocida (espagueti)", 158, 5.8, 31.0, 0.9},
-        {"Ensalada Cesar con pollo", 350, 18.0, 15.0, 24.0},
-        {"Sushi Filadelfia (8 pzas)", 320, 8.0, 52.0, 8.0}
-    };
-
-    vector<string> comidas = { "Desayuno", "Almuerzo", "Cena" };// Matriz dinámica: 3 posiciones (una por comida), cada una empieza vacía
-    vector<vector<int>> selecciones_por_comida(3);
-    int opcion_comida, opcion_alimento; // Variables de control para el menú
-
-    do {
-        // Mostrar menú de tiempos de comida
-        cout << "\n=== ¿A QUE TIEMPO DE COMIDA DESEAS AGREGAR ALIMENTOS? ===\n";
-        for (size_t i = 0; i < comidas.size(); i++) {
-            cout << i + 1 << ". " << comidas[i] << " (" << selecciones_por_comida[i].size() << " agregados)\n";
-        }
-        cout << "4. Terminar y ver Resumen Total de Nutrientes\n";
-        cout << "Seleccione una opcion: ";
-        cin >> opcion_comida;
-
-        if (opcion_comida >= 1 && opcion_comida <= 3) {
-            int indice_comida = opcion_comida - 1; // Ajustar a índice 0, 1 o 2
-
-            // Mostrar la tabla de alimentos disponibles
-            cout << "\n=== MENU DE ALIMENTOS DISPONIBLES ===\n";
-            cout << left << setw(4) << "#" << setw(12) << "Alimento"
-                << setw(8) << "Kcal" << setw(10) << "Proteina"
-                << setw(14) << "Carbohidratos" << "Grasa\n";
-            cout << string(50, '-') << "\n";
-
-            for (size_t i = 0; i < alimentos.size(); i++) {
-                cout << left << setw(4) << i + 1
-                    << setw(12) << alimentos[i].nombre
-                    << setw(8) << alimentos[i].kcal
-                    << setw(10) << to_string(alimentos[i].proteina) + "g"
-                    << setw(14) << to_string(alimentos[i].carbohidratos) + "g"
-                    << alimentos[i].grasa << "g\n";
-            }
-
-            cout << "0. Volver al menu de comidas\n";
-            cout << "Seleccione el numero del alimento para el " << comidas[indice_comida] << ": ";
-            cin >> opcion_alimento;
-
-            // Validar que el alimento exista y agregarlo a esa comida específica
-            if (opcion_alimento >= 1 && opcion_alimento <= (int)alimentos.size()) {
-                selecciones_por_comida[indice_comida].push_back(opcion_alimento - 1);
-                cout << "\x1B[32m¡" << alimentos[opcion_alimento - 1].nombre << " agregado al " << comidas[indice_comida] << "!\x1B[0m\n";
-            }
-        }
-    } while (opcion_comida != 4);
-
-    cout << "\n\n==================================================\n";
-    cout << "          RESUMEN NUTRICIONAL DEL DIA             \n";
-    cout << "==================================================\n";
-
-    // Variables globales para la suma de todo el día
-    int total_kcal_dia = 0;
-    double total_prot_dia = 0, total_carb_dia = 0, total_gras_dia = 0;
-
-    // Recorrer cada tiempo de comida (Desayuno, Almuerzo, Cena)
-    for (size_t i = 0; i < comidas.size(); i++) {
-        cout << "\n> " << comidas[i] << ":\n";
-
-        if (selecciones_por_comida[i].empty()) {
-            cout << "  No se registraron alimentos.\n";
-            continue;
-        }
-
-        // Variables locales para sumar solo esta comida
-        int kcal_comida = 0;
-        double prot_comida = 0, carb_comida = 0, gras_comida = 0;
-
-        // Recorrer los alimentos que el usuario guardó en esta comida
-        for (int idx_alimento : selecciones_por_comida[i]) {
-            Alimento al = alimentos[idx_alimento];
-            cout << "  - " << al.nombre << " (" << al.kcal << " Kcal)\n";
-
-            // Sumar a la comida actual
-            kcal_comida += al.kcal;
-            prot_comida += al.proteina;
-            carb_comida += al.carbohidratos;
-            gras_comida += al.grasa;
-        }
-
-        // Mostrar subtotales de la comida
-        cout << fixed << setprecision(1); // Formatear decimales a un solo dígito
-        cout << "  \x1B[36mSubtotal " << comidas[i] << " -> Kcal: " << kcal_comida
-            << " | Prot: " << prot_comida << "g | Carb: " << carb_comida
-            << "g | Gras: " << gras_comida << "g\x1B[0m\n";
-
-        // Acumular en los totales generales del día
-        total_kcal_dia += kcal_comida;
-        total_prot_dia += prot_comida;
-        total_carb_dia += carb_comida;
-        total_gras_dia += gras_comida;
-    }
-
-    // Mostrar el Gran Total Final en pantalla
-    cout << "\n==================================================\n";
-    cout << " \x1B[33mTOTAL CONSUMIDO EN EL DIA:\x1B[0m\n";
-    cout << " - Calorias Totales:  " << total_kcal_dia << " Kcal\n";
-    cout << " - Proteinas Totales: " << total_prot_dia << " g\n";
-    cout << " - Carbohidratos:     " << total_carb_dia << " g\n";
-    cout << " - Grasas Totales:    " << total_gras_dia << " g\n";
-    cout << "==================================================\n";
-
-
-    if (total_kcal_dia = cal) {
-        cout << "\n¡ FELICIDADES  " << nombreCompleto << " HAZ MANTENIDO UNA ALIMETACION BALANCEADA SEGUN TU TIPO DE ACTIVIDAD FISICA!" << endl;
-        cout << "\n\n__________________________________________________\n";
-    }
-    else if (total_kcal_dia > cal) {
-        cout << "\033[31m" << "\n ¡CUIDA TU ALIMENTACION! " << endl;
-        cout << "\033[31m" << nombreCompleto << "Estas consumiendo demasiada calorias, eso puede afectar tu salud..." << endl;
-        cout << "\n\n__________________________________________________\n";
-        cout << "\033[0m";
-    }
-    else {
-        cout << nombreCompleto << "\n puede que te falte alimentos con mas calorias, puede afectar en perdida de masa muscular, perdida de cabello, ¡alimentate bien!" << endl;
-        cout << "\n\n__________________________________________________\n";
-    }
-}
-
-void menu(int& opcion) {
-    cout << "==================================================================================================================" << endl;
-    cout << "   \t\t\t\tCONSULTAS DE MI ALIMENTACION " << endl;
-    cout << "==================================================================================================================" << endl << endl;
-    cout << "1. CONSULTA DE MI REQUERIMIENTO CALORICO Y SUGERENCIAS" << endl;
-    cout << "2. COMPROBACION DE ALIMETOS CONSUMIDOS/ RECOMENDADOS" << endl;
-    cout << "3. Salir" << endl;
-    cout << "------------------------------------------------------------------------------------------------------------------" << endl;
-    cout << "\t\t\t\t\tSeleccione una opcion: " << endl;
-    cout << "------------------------------------------------------------------------------------------------------------------" << endl;
-    if (!(cin >> opcion)) { // Validacion para evitar bucle infinito si meten letras
-        cin.clear();
-        cin.ignore(1000, '\n');
-        opcion = 0;
-    }
-}
-
-
-void comprobacion() {
-
 }

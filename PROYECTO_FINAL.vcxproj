@@ -148,10 +148,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="conexionBD.cpp" />
+    <ClCompile Include="OperacionesBD.cpp" />
     <ClCompile Include="PROYECTO_FINAL.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ConexionBD.h" />
+    <ClInclude Include="OperacionesBD.h" />
+    <ClInclude Include="Tipos.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

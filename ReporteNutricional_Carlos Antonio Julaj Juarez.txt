@@ -1,0 +1,16 @@
+==================================================
+ REPORTE NUTRICIONAL - SISTEMA 2026
+==================================================
+Usuario: Carlos Antonio Julaj Juarez (ID: Carlos Antonio Julaj Juarez)
+IMC: 23.61 | Meta: 1372.00 kcal
+
+--- CONSUMO HOY ---
+Desayuno: Piza de pepperoni (290 kcal)
+Almuerzo: Papas fritas (365 kcal)
+Cena: Nuggets de pollo (270 kcal)
+
+TOTAL: 925 kcal
+
+--- ANALISIS ---
+[+] 3 tiempos completos.
+==================================================
