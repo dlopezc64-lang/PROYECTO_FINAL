@@ -1,0 +1,16 @@
+==================================================
+ REPORTE NUTRICIONAL - SISTEMA 2026
+==================================================
+Usuario: Juan Perez (ID: 3)
+IMC: 23.74 | Meta: 2131.25 kcal
+
+--- CONSUMO HOY ---
+Desayuno: Cafe Latte (120 kcal)
+Almuerzo: Frijoles negros (132 kcal)
+Cena: Sushi Filadelfia (320 kcal)
+
+TOTAL: 572 kcal
+
+--- ANALISIS ---
+[+] 3 tiempos completos.
+==================================================

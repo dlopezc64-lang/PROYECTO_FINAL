@@ -1,0 +1,16 @@
+==================================================
+ REPORTE NUTRICIONAL - SISTEMA 2026
+==================================================
+Usuario: Jose Perez (ID: 345)
+IMC: 24.98 | Meta: 1421.50 kcal
+
+--- CONSUMO HOY ---
+Desayuno: Nuggets de pollo (270 kcal)
+Almuerzo: Cerveza clara (153 kcal)
+Cena: Papas fritas (365 kcal)
+
+TOTAL: 788 kcal
+
+--- ANALISIS ---
+[+] 3 tiempos completos.
+==================================================

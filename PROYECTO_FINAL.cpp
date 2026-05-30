@@ -304,7 +304,7 @@ void registrarNuevoUsuario(vector<Usuario>& usuarios) {
 
     string errPeso;
     while (true) {
-        cout << "Peso (kg): ";
+        cout << "Peso en Kg (ejemplo 70): ";
         if (!(cin >> nuevo.peso)) {
             cout << ROJO << "Entrada invalida.\n" << RESET;
             cin.clear(); cin.ignore(1000, '\n');
@@ -316,7 +316,7 @@ void registrarNuevoUsuario(vector<Usuario>& usuarios) {
             << errPeso << "\nIngrese nuevamente el dato.\n" << RESET;
     }
 
-    cout << "Altura (m): ";
+    cout << "Altura en M (ej. !.70): ";
     while (!(cin >> nuevo.altura) || nuevo.altura <= 0) {
         cout << ROJO << "Altura invalida. Ingrese de nuevo: " << RESET;
         cin.clear(); cin.ignore(1000, '\n');
@@ -395,6 +395,44 @@ void registrarNuevoUsuario(vector<Usuario>& usuarios) {
 }
 
 void cargarPerfilExistente(vector<Usuario>& usuarios) {
+    // Si no hay usuarios en memoria, intentar cargar desde la base de datos
+    if (usuarios.empty() && g_con) {
+        string q = "SELECT codigo_usuario, nombre_completo, edad, genero, direccion, peso, altura, nivel_actividad, ocupacion, imc, meta_seleccionada, id_usuario FROM usuarios";
+        if (mysql_query(g_con, q.c_str())) {
+            cout << ROJO << "Error al consultar la base de datos: " << mysql_error(g_con) << RESET << "\n";
+        }
+        else {
+            MYSQL_RES* res = mysql_store_result(g_con);
+            if (res) {
+                MYSQL_ROW row;
+                while ((row = mysql_fetch_row(res))) {
+                    string codigo = row[0] ? row[0] : string("");
+                    // Evitar duplicados si ya existe en memoria
+                    bool existe = false;
+                    for (const auto& u : usuarios) if (aMinusculas(u.id) == aMinusculas(codigo)) { existe = true; break; }
+                    if (existe) continue;
+
+                    Usuario nu;
+                    nu.id = codigo;
+                    nu.nombreCompleto = row[1] ? row[1] : string("");
+                    nu.edad = row[2] ? stoi(row[2]) : 0;
+                    nu.genero = row[3] ? row[3] : string("");
+                    nu.direccion = row[4] ? row[4] : string("");
+                    nu.peso = row[5] ? stof(row[5]) : 0.0f;
+                    nu.altura = row[6] ? stof(row[6]) : 0.0f;
+                    nu.nivelActividad = row[7] ? row[7] : string("");
+                    nu.ocupacion = row[8] ? row[8] : string("");
+                    nu.imc = row[9] ? stod(row[9]) : 0.0;
+                    nu.metaSeleccionada = row[10] ? stoi(row[10]) : 0;
+                    nu.dbId = row[11] ? stoi(row[11]) : -1;
+
+                    usuarios.push_back(nu);
+                }
+                mysql_free_result(res);
+            }
+        }
+    }
+
     if (usuarios.empty()) {
         cout << ROJO << "\nNo hay usuarios registrados aun.\n" << RESET;
         pausa();
@@ -445,17 +483,52 @@ void listarUsuariosRegistrados(const vector<Usuario>& usuarios) {
         << setw(10) << "IMC"
         << RESET << endl;
     dibujarLinea(70, '-');
+    // Si hay conexion a BD, preferimos mostrar los usuarios almacenados en la BD
+    if (g_con) {
+        string q = "SELECT codigo_usuario, nombre_completo, edad, peso, imc FROM usuarios";
+        if (mysql_query(g_con, q.c_str())) {
+            cout << ROJO << "Error al consultar la base de datos: " << mysql_error(g_con) << RESET << "\n";
+        }
+        else {
+            MYSQL_RES* res = mysql_store_result(g_con);
+            if (!res) {
+                cout << "No hay usuarios en la base de datos." << endl;
+            }
+            else {
+                MYSQL_ROW row;
+                bool any = false;
+                while ((row = mysql_fetch_row(res))) {
+                    any = true;
+                    string codigo = row[0] ? row[0] : string("");
+                    string nombre = row[1] ? row[1] : string("");
+                    string edad_s = row[2] ? row[2] : string("0");
+                    string peso_s = row[3] ? row[3] : string("0");
+                    string imc_s = row[4] ? row[4] : string("0");
 
-    if (usuarios.empty()) {
-        cout << "No hay usuarios en el sistema.\n";
+                    cout << setw(12) << left << codigo
+                        << setw(32) << nombre.substr(0, 30)
+                        << setw(8) << edad_s
+                        << setw(10) << peso_s
+                        << setw(10) << imc_s << endl;
+                }
+                mysql_free_result(res);
+                if (!any) cout << "No hay usuarios en la base de datos." << endl;
+            }
+        }
     }
     else {
-        for (const auto& u : usuarios) {
-            cout << setw(12) << left << u.id
-                << setw(32) << u.nombreCompleto.substr(0, 30)
-                << setw(8) << u.edad
-                << setw(10) << u.peso
-                << setw(10) << fixed << setprecision(2) << u.imc << endl;
+        // Si no hay conexion a BD, mostrar lo que tengamos en memoria
+        if (usuarios.empty()) {
+            cout << "No hay usuarios en el sistema.\n";
+        }
+        else {
+            for (const auto& u : usuarios) {
+                cout << setw(12) << left << u.id
+                    << setw(32) << u.nombreCompleto.substr(0, 30)
+                    << setw(8) << u.edad
+                    << setw(10) << u.peso
+                    << setw(10) << fixed << setprecision(2) << u.imc << endl;
+            }
         }
     }
     dibujarLinea();
@@ -518,7 +591,7 @@ void registroDietaDiaria(Usuario& u) {
 
     if (!u.yaTieneCaloriasCalculadas) {
         cout << BOLD << "Primera vez: Configuremos tus calculos base\n" << RESET;
-        cout << "Nivel de actividad (1.Sedentario 2.Ligero 3.Moderado 4.Activo 5.Muy activo): ";
+        cout << "Nivel de actividad \n(1.Sedentario\n 2.Ligero \n3.Moderado \n 4.Activo \n 5.Muy activo): ";
         while (!(cin >> u.nivelActividadSeleccionado) || u.nivelActividadSeleccionado < 1 || u.nivelActividadSeleccionado > 5) {
             cout << ROJO << "Opcion invalida: " << RESET;
             cin.clear(); cin.ignore(1000, '\n');

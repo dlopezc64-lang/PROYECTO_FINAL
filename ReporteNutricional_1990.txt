@@ -1,0 +1,16 @@
+==================================================
+ REPORTE NUTRICIONAL - SISTEMA 2026
+==================================================
+Usuario: Marvin Emanuel Pichiya Culajay (ID: 1990)
+IMC: 41.42 | Meta: 1983.44 kcal
+
+--- CONSUMO HOY ---
+Desayuno: Pechuga de pollo (165 kcal)
+Almuerzo: Carne asar (res) (250 kcal)
+Cena: Papas fritas (365 kcal)
+
+TOTAL: 780 kcal
+
+--- ANALISIS ---
+[+] 3 tiempos completos.
+==================================================
