@@ -17,7 +17,7 @@
 #include <windows.h>
 #endif
 
-#include "ConexionBD.h" // Asegurate de que este archivo este en el mismo directorio
+//#include "ConexionBD.h" // Asegurate de que este archivo este en el mismo directorio
 
 using namespace std;
 
@@ -134,16 +134,16 @@ int main() {
 #endif
 
     vector<Usuario> usuariosRegistrados;
-    ConexionBD cn = ConexionBD();
-    cn.abrir_conexion();
-    if (cn.get_conexion()) {
-        cout << VERDE << "----------------------------------------------------------------------------------------------------------------------." << RESET << "\n";
-        cout << VERDE << "\t\t\t\t[OK] DB Connection" << RESET << "\n";
-        cout << VERDE << "----------------------------------------------------------------------------------------------------------------------." << RESET << "\n";
-    }
-    else {
-        cout << ROJO << "[ERROR] Error correcting the DB." << RESET << "\n";
-    }
+  //  ConexionBD cn = ConexionBD();
+    //cn.abrir_conexion();
+    //if (cn.get_conexion()) {
+      //  cout << VERDE << "----------------------------------------------------------------------------------------------------------------------." << RESET << "\n";
+        //cout << VERDE << "\t\t\t\t[OK] DB Connection" << RESET << "\n";
+        //cout << VERDE << "----------------------------------------------------------------------------------------------------------------------." << RESET << "\n";
+    //}
+    //else {
+      //  cout << ROJO << "[ERROR] Error correcting the DB." << RESET << "\n";
+   // }
 
     pantallaBienvenida();
 
