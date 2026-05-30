@@ -1,0 +1,16 @@
+==================================================
+ REPORTE NUTRICIONAL - SISTEMA 2026
+==================================================
+Usuario: Carlos Antonio Julaj Juarez (ID: 344)
+IMC: 23.88 | Meta: 1397.50 kcal
+
+--- CONSUMO HOY ---
+Desayuno: Hamburguesa con queso (303 kcal)
+Almuerzo: Papas fritas (365 kcal)
+Cena: Nuggets de pollo (270 kcal)
+
+TOTAL: 938 kcal
+
+--- ANALISIS ---
+[+] 3 tiempos completos.
+==================================================

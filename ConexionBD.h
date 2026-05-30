@@ -16,7 +16,7 @@ public:
     void abrir_conexion() {
         conexion = mysql_real_connect(
             conexion, "localhost", "root",
-            "Khali-0723", "BD_sistemaNutricionUmg",
+            "Khali-0723", "bd_sistemanutricionumg", //bd_sistemanutricionumg
             3306, NULL, 0
         );
         if (conexion) cout << "Conexion Exitosa\n";

@@ -1,3 +1,4 @@
+//Tipos.h
 #pragma once
 #include <string>
 
