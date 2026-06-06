@@ -1,0 +1,16 @@
+==================================================
+ REPORTE NUTRICIONAL - SISTEMA 2026
+==================================================
+Usuario: Reyna Juarez (ID: 321)
+IMC: 25.39 | Meta: 1366.00 kcal
+
+--- CONSUMO HOY ---
+Desayuno: Nuggets de pollo (270 kcal)
+Almuerzo: Hot Dog sencillo (290 kcal)
+Cena: Refresco de cola (150 kcal)
+
+TOTAL: 710 kcal
+
+--- ANALISIS ---
+[+] 3 tiempos completos.
+==================================================

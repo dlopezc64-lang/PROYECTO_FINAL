@@ -1,0 +1,16 @@
+==================================================
+ REPORTE NUTRICIONAL - SISTEMA 2026
+==================================================
+Usuario: Norma Perez (ID: 123)
+IMC: 50.00 | Meta: 530.80 kcal
+
+--- CONSUMO HOY ---
+Desayuno: Hamburguesa con queso (303 kcal)
+Almuerzo: Hamburguesa con queso (303 kcal)
+Cena: Hamburguesa con queso (303 kcal)
+
+TOTAL: 909 kcal
+
+--- ANALISIS ---
+[+] 3 tiempos completos.
+==================================================

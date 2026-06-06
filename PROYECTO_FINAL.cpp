@@ -71,7 +71,7 @@ struct Usuario {
 // ======================================================================
 // MODULO 4: DATOS GLOBALES CONSTANTES
 // ======================================================================
-const vector<Alimento> listaAlimentos = {
+vector<Alimento> listaAlimentos = {
     {"Hamburguesa con queso", 303, 15.0, 30.0, 14.0},
     {"Piza de pepperoni",     290, 12.0, 32.0, 12.0},
     {"Papas fritas",          365,  4.0, 48.0, 17.0},
@@ -100,6 +100,9 @@ void limpiar();
 void pausa();
 void dibujarLinea(int ancho = 70, char c = '=');
 void dibujarTitulo(const string& titulo);
+
+// 5.1.1 Gestion de alimentos dinamicos
+void agregarAlimento();
 
 // 5.2 Utilidades de strings y validacion
 string optimizarEspacios(const string& s);
@@ -146,9 +149,6 @@ int main() {
         cout << VERDE << "----------------------------------------------------------------------------------------------------------------------." << RESET << "\n";
         cout << VERDE << "\t\t\t\t[OK] DB Connection" << RESET << "\n";
         cout << VERDE << "----------------------------------------------------------------------------------------------------------------------." << RESET << "\n";
-    }
-    else {
-        cout << ROJO << "[ERROR] Error connecting to the DB." << RESET << "\n";
     }
 
     pantallaBienvenida();
@@ -276,9 +276,24 @@ void registrarNuevoUsuario(vector<Usuario>& usuarios) {
     getline(cin, buf);
     nuevo.id = optimizarEspacios(buf);
 
-    cout << "Nombre completo: ";
-    getline(cin, buf);
-    nuevo.nombreCompleto = optimizarEspacios(buf);
+    // Ingreso de nombre por partes
+    string n1, n2, a1, a2;
+    cout << "Primer Nombre: ";
+    getline(cin, n1);
+    cout << "Segundo Nombre (opcional): ";
+    getline(cin, n2);
+    cout << "Primer Apellido: ";
+    getline(cin, a1);
+    cout << "Segundo Apellido (opcional): ";
+    getline(cin, a2);
+
+    // Construir nombre completo (sin duplicar espacios)
+    stringstream ssnom;
+    ssnom << optimizarEspacios(n1);
+    if (!optimizarEspacios(n2).empty()) ssnom << " " << optimizarEspacios(n2);
+    if (!optimizarEspacios(a1).empty()) ssnom << " " << optimizarEspacios(a1);
+    if (!optimizarEspacios(a2).empty()) ssnom << " " << optimizarEspacios(a2);
+    nuevo.nombreCompleto = optimizarEspacios(ssnom.str());
 
     cout << "Edad: ";
     while (!(cin >> nuevo.edad) || nuevo.edad <= 0) {
@@ -291,16 +306,35 @@ void registrarNuevoUsuario(vector<Usuario>& usuarios) {
     getline(cin, buf);
     nuevo.genero = optimizarEspacios(buf);
 
-    string errDir;
-    while (true) {
-        cout << "\nDireccion (Ej.): "
-            << AMARILLO << "3-44, Zona 1, El Tejar, Chimaltenango" << RESET << "\n";
-        cout << "Ingrese direccion: ";
-        getline(cin, buf);
-        nuevo.direccion = optimizarEspacios(buf);
-        if (validarDireccion(nuevo.direccion, errDir)) break;
-        cout << ROJO << "\n[ERROR EN DIRECCION]\n" << errDir << RESET << endl;
+    // Ingreso de direccion por partes
+    string numCasa, sector, municipio;
+    vector<string> municipios = {
+        "Acatenango", "Chimaltenango", "El Tejar", "Parramos",
+        "Patzicía", "Patzún", "Pochuta", "San Andrés Itzapa",
+        "San José Poaquil", "San Martín Jilotepeque", "Santa Apolonia",
+        "Santa Lucía Milpas Altas", "Santa María de Jesús", "Santo Domingo Xenacoj",
+        "Yepocapa", "Zaragoza"
+    };
+
+    cout << "\nIngrese Numero de casa (ej: 3-44): ";
+    getline(cin, numCasa);
+    cout << "Ingrese Zona/Colonia/Barrio: ";
+    getline(cin, sector);
+
+    // Seleccionar municipio
+    cout << "Seleccione Municipio:\n";
+    for (size_t i = 0; i < municipios.size(); ++i) {
+        cout << " " << (i + 1) << ". " << municipios[i] << "\n";
     }
+    int selMun = 0;
+    while (!(cin >> selMun) || selMun < 1 || selMun >(int)municipios.size()) {
+        cout << ROJO << "Seleccion invalida. Ingrese numero del municipio: " << RESET;
+        cin.clear(); cin.ignore(1000, '\n');
+    }
+    cin.ignore(1000, '\n');
+    municipio = municipios[selMun - 1];
+
+    nuevo.direccion = optimizarEspacios(numCasa) + ", " + optimizarEspacios(sector) + ", " + municipio + ", Chimaltenango";
 
     string errPeso;
     while (true) {
@@ -619,6 +653,66 @@ void registroDietaDiaria(Usuario& u) {
         cout << VERDE << "[OK] Calorias calculadas: " << u.caloriasRecomendadas << " kcal\n" << RESET;
     }
 
+    // Modo de ingreso: manual (1) o usar listado (2)
+    bool manualMode = false;
+    if (u.yaTieneCaloriasCalculadas) {
+        int modo = 0;
+        cout << "\nSeleccione modo de ingreso de alimentos:\n"
+            << " 1) Ingresar alimentos manualmente (Desayuno/Almuerzo/Cena)\n"
+            << " 2) Usar listado de alimentos\n"
+            << "Seleccione (1-2): ";
+        while (!(cin >> modo) || (modo != 1 && modo != 2)) {
+            cout << ROJO << "Opcion invalida: " << RESET;
+            cin.clear(); cin.ignore(1000, '\n');
+        }
+
+        if (modo == 1) {
+            manualMode = true;
+            cin.ignore(1000, '\n'); // limpiar buffer antes de getline
+
+            // Solo pedir los tiempos que no esten ya registrados
+            struct MealReq { const char* label; int* idxPtr; } meals[3] = {
+                {"Desayuno", &u.desayunoIdx},
+                {"Almuerzo", &u.almuerzoIdx},
+                {"Cena", &u.cenaIdx}
+            };
+
+            for (int m = 0; m < 3; ++m) {
+                if (*(meals[m].idxPtr) != -1) {
+                    cout << VERDE << "[OK] " << meals[m].label << " ya registrado: " << listaAlimentos[*(meals[m].idxPtr)].nombre << RESET << "\n";
+                    continue;
+                }
+
+                Alimento a;
+                string buf;
+                cout << "\nIngreso manual - " << meals[m].label << "\n";
+                cout << "Nombre del alimento: ";
+                getline(cin, buf);
+                a.nombre = optimizarEspacios(buf);
+
+                cout << "Kcal (numero entero): ";
+                while (!(cin >> a.kcal)) { cout << ROJO << "Entrada invalida. Ingrese Kcal: " << RESET; cin.clear(); cin.ignore(1000, '\n'); }
+
+                cout << "Proteina (g): ";
+                while (!(cin >> a.proteina)) { cout << ROJO << "Entrada invalida. Ingrese proteina: " << RESET; cin.clear(); cin.ignore(1000, '\n'); }
+
+                cout << "Carbohidratos (g): ";
+                while (!(cin >> a.carbohidratos)) { cout << ROJO << "Entrada invalida. Ingrese carbohidratos: " << RESET; cin.clear(); cin.ignore(1000, '\n'); }
+
+                cout << "Grasa (g): ";
+                while (!(cin >> a.grasa)) { cout << ROJO << "Entrada invalida. Ingrese grasa: " << RESET; cin.clear(); cin.ignore(1000, '\n'); }
+
+                cin.ignore(1000, '\n');
+                listaAlimentos.push_back(a);
+                *(meals[m].idxPtr) = (int)listaAlimentos.size() - 1;
+                cout << VERDE << "[OK] " << meals[m].label << ": " << a.nombre << RESET << "\n";
+            }
+        }
+        else {
+            // modo == 2 -> seguir con el listado (no hacer nada aquí)
+        }
+    }
+
     cout << "\n" << BOLD
         << "+-----------------------------------------------------------------+\n"
         << "¦  #  ¦ Alimento              ¦ Kcal   ¦ Prot(g) ¦ Carb(g)¦Gras(g)¦\n"
@@ -632,6 +726,7 @@ void registroDietaDiaria(Usuario& u) {
             << " ¦ " << setw(6) << listaAlimentos[i].carbohidratos
             << " ¦ " << setw(5) << listaAlimentos[i].grasa << " ¦\n";
     }
+    cout << "¦  0  ¦ Agregar nuevo alimento                                   ¦\n";
     cout << BOLD << "+-----------------------------------------------------------------+\n" << RESET;
 
     int seleccion;
@@ -639,8 +734,16 @@ void registroDietaDiaria(Usuario& u) {
 
     if (u.desayunoIdx == -1) {
         cout << "Desayuno #: ";
-        while (!(cin >> seleccion) || seleccion < 1 || seleccion >(int)listaAlimentos.size()) {
+        while (!(cin >> seleccion) || (seleccion < 0) || seleccion >(int)listaAlimentos.size()) {
             cout << ROJO << "Numero invalido: " << RESET; cin.clear(); cin.ignore(1000, '\n');
+        }
+        if (seleccion == 0) {
+            cin.ignore(1000, '\n');
+            agregarAlimento();
+            cout << VERDE << "Alimento agregado. Seleccione el numero para desayunar: " << RESET;
+            while (!(cin >> seleccion) || seleccion < 1 || seleccion >(int)listaAlimentos.size()) {
+                cout << ROJO << "Numero invalido: " << RESET; cin.clear(); cin.ignore(1000, '\n');
+            }
         }
         u.desayunoIdx = seleccion - 1;
         cout << VERDE << "[OK] Desayuno: " << listaAlimentos[u.desayunoIdx].nombre << RESET << "\n";
@@ -649,8 +752,16 @@ void registroDietaDiaria(Usuario& u) {
 
     if (u.almuerzoIdx == -1) {
         cout << "Almuerzo #: ";
-        while (!(cin >> seleccion) || seleccion < 1 || seleccion >(int)listaAlimentos.size()) {
+        while (!(cin >> seleccion) || (seleccion < 0) || seleccion >(int)listaAlimentos.size()) {
             cout << ROJO << "Numero invalido: " << RESET; cin.clear(); cin.ignore(1000, '\n');
+        }
+        if (seleccion == 0) {
+            cin.ignore(1000, '\n');
+            agregarAlimento();
+            cout << VERDE << "Alimento agregado. Seleccione el numero para almorzar: " << RESET;
+            while (!(cin >> seleccion) || seleccion < 1 || seleccion >(int)listaAlimentos.size()) {
+                cout << ROJO << "Numero invalido: " << RESET; cin.clear(); cin.ignore(1000, '\n');
+            }
         }
         u.almuerzoIdx = seleccion - 1;
         cout << VERDE << "[OK] Almuerzo: " << listaAlimentos[u.almuerzoIdx].nombre << RESET << "\n";
@@ -659,8 +770,16 @@ void registroDietaDiaria(Usuario& u) {
 
     if (u.cenaIdx == -1) {
         cout << "Cena #: ";
-        while (!(cin >> seleccion) || seleccion < 1 || seleccion >(int)listaAlimentos.size()) {
+        while (!(cin >> seleccion) || (seleccion < 0) || seleccion >(int)listaAlimentos.size()) {
             cout << ROJO << "Numero invalido: " << RESET; cin.clear(); cin.ignore(1000, '\n');
+        }
+        if (seleccion == 0) {
+            cin.ignore(1000, '\n');
+            agregarAlimento();
+            cout << VERDE << "Alimento agregado. Seleccione el numero para cenar: " << RESET;
+            while (!(cin >> seleccion) || seleccion < 1 || seleccion >(int)listaAlimentos.size()) {
+                cout << ROJO << "Numero invalido: " << RESET; cin.clear(); cin.ignore(1000, '\n');
+            }
         }
         u.cenaIdx = seleccion - 1;
         cout << VERDE << "[OK] Cena: " << listaAlimentos[u.cenaIdx].nombre << RESET << "\n";
@@ -856,37 +975,6 @@ string aMinusculas(const string& s) {
     return r;
 }
 
-bool validarDireccion(const string& dir, string& mensajeError) {
-    mensajeError = "";
-    vector<string> partes;
-    stringstream ss(dir);
-    string item;
-    while (getline(ss, item, ',')) partes.push_back(optimizarEspacios(item));
-
-    if (partes.size() < 4) {
-        mensajeError = "Error: Debe tener 4 elementos separados por comas.\n";
-        return false;
-    }
-
-    string pCasa = aMinusculas(partes[0]);
-    bool tieneNumero = false;
-    for (char c : pCasa) { if (isdigit(c)) { tieneNumero = true; break; } }
-    if (!tieneNumero) mensajeError += " -> Falta Numero de Casa.\n";
-
-    string pSector = aMinusculas(partes[1]);
-    vector<string> sectores = { "zona", "barrio", "colonia", "canton" };
-    bool tieneSector = false;
-    for (const string& sec : sectores)
-        if (pSector.find(sec) != string::npos) { tieneSector = true; break; }
-    if (!tieneSector) mensajeError += " -> Falta referencia de Sector.\n";
-
-    string pDepto = aMinusculas(partes[3]);
-    if (pDepto.find("chimaltenango") == string::npos)
-        mensajeError += " -> Falta 'Chimaltenango'.\n";
-
-    return mensajeError.empty();
-}
-
 bool validarPesoEdad(float peso, int anios, string& mensajeError) {
     float  minKg, maxKg;
     string rango;
@@ -922,4 +1010,30 @@ void evaluacionPesoYMensaje(int edad, double imc) {
         else if (imc >= 17.0) cout << VERDE << "Peso Saludable" << RESET;
         else                  cout << ROJO << "Bajo peso" << RESET;
     }
+}
+
+// AgregarAlimento: implementacion fuera de main (movida aqui)
+void agregarAlimento() {
+    Alimento a;
+    string buf;
+    cout << "Agregar nuevo alimento\n";
+    cout << "Nombre del alimento: ";
+    getline(cin, buf);
+    a.nombre = optimizarEspacios(buf);
+
+    cout << "Kcal (numero entero): ";
+    while (!(cin >> a.kcal)) { cout << ROJO << "Entrada invalida. Ingrese Kcal: " << RESET; cin.clear(); cin.ignore(1000, '\n'); }
+
+    cout << "Proteina (g): ";
+    while (!(cin >> a.proteina)) { cout << ROJO << "Entrada invalida. Ingrese proteina: " << RESET; cin.clear(); cin.ignore(1000, '\n'); }
+
+    cout << "Carbohidratos (g): ";
+    while (!(cin >> a.carbohidratos)) { cout << ROJO << "Entrada invalida. Ingrese carbohidratos: " << RESET; cin.clear(); cin.ignore(1000, '\n'); }
+
+    cout << "Grasa (g): ";
+    while (!(cin >> a.grasa)) { cout << ROJO << "Entrada invalida. Ingrese grasa: " << RESET; cin.clear(); cin.ignore(1000, '\n'); }
+
+    cin.ignore(1000, '\n');
+    listaAlimentos.push_back(a);
+    cout << VERDE << "Alimento agregado: " << a.nombre << RESET << "\n";
 }

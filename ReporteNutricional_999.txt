@@ -1,0 +1,16 @@
+==================================================
+ REPORTE NUTRICIONAL - SISTEMA 2026
+==================================================
+Usuario: Tomas Julaj Esquit (ID: 999)
+IMC: 28.04 | Meta: 1111.00 kcal
+
+--- CONSUMO HOY ---
+Desayuno: Pure de Papa (102 kcal)
+Almuerzo: Caldo de rez (21 kcal)
+Cena: Sardina (24 kcal)
+
+TOTAL: 147 kcal
+
+--- ANALISIS ---
+[+] 3 tiempos completos.
+==================================================

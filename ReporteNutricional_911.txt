@@ -1,0 +1,16 @@
+==================================================
+ REPORTE NUTRICIONAL - SISTEMA 2026
+==================================================
+Usuario: Pedro Morales (ID: 911)
+IMC: 25.99 | Meta: 1780.78 kcal
+
+--- CONSUMO HOY ---
+Desayuno: Piza de pepperoni (290 kcal)
+Almuerzo: Papas fritas (365 kcal)
+Cena: Nuggets de pollo (270 kcal)
+
+TOTAL: 925 kcal
+
+--- ANALISIS ---
+[+] 3 tiempos completos.
+==================================================
